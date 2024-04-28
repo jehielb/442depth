@@ -10,6 +10,8 @@ from torchvision import transforms, utils
 from PIL import Image
 from io import BytesIO
 import random
+from sklearn.model_selection import KFold
+import matplotlib.pyplot as plt
 
 
 def _is_pil_image(img):
@@ -67,8 +69,6 @@ class depthDataset(Dataset):
         return sample
     
     def __len__(self):
-        # print(self.data['images'].shape)
-        # print(self.data['images'].shape[0])
         return self.data['images'].shape[0]
 
 class ToTensor(object):
@@ -139,102 +139,66 @@ def loadMatToMem(zip_file):
 
 
 
+
+
 def getTrainingTestingData(batch_size):
 
     data = loadMatToMem('nyu_data.zip')
-    # breakpoint()
-    transformed_training = depthDataset(data, transform=getNoTransform())
+    breakpoint()
+
+    output_np = (output_np * 255).astype(np.uint8)
+    # Convert NumPy array to PIL image
+    output_img = Image.fromarray(output_np)
+    # Save the image to a file
+    output_img.save('output_image.png')
+    
+    transformed_training = depthDataset(data, transform=getDefaultTrainTransform())
     transformed_testing = depthDataset(data, transform=getNoTransform())
     # breakpoint()
     # test1 = DataLoader(transformed_training, batch_size, shuffle=True)
     # test2 = DataLoader(transformed_testing, batch_size, shuffle=False)
     return DataLoader(transformed_training, batch_size, shuffle=True), DataLoader(transformed_testing, batch_size, shuffle=False)
 
+    # Assuming you have your data stored in a dictionary named 'data'
+    # with keys 'images' and 'depths'
+    images = data['images']
+    depths = data['depths']
 
-# def loadZipToMem(zip_file):
-#     # Load zip file into memory
-#     print('Loading dataset zip file...', end='')
-#     from zipfile import ZipFile
+    # Specify the number of folds
+    num_folds = 5
 
-#     breakpoint()
-#     input_zip = ZipFile(zip_file)
-#     data = {name: input_zip.read(name) for name in input_zip.namelist()}
-#     nyu2_train = list((row.split(',') for row in (data['data/nyu2_train.csv']).decode("utf-8").split('\n') if len(row) > 0))
+    # Initialize the KFold object
+    kf = KFold(n_splits=num_folds, shuffle=True)
 
-#     from sklearn.utils import shuffle
-#     nyu2_train = shuffle(nyu2_train, random_state=0)
+    # Iterate over the splits
+    for fold, (train_idx, test_idx) in enumerate(kf.split(images)):
+        print(f'Fold {fold+1}:')
+        # Split the data into train and test sets
+        train_images, train_depths = images[train_idx], depths[train_idx]
+        test_images, test_depths = images[test_idx], depths[test_idx]
 
-#     #if True: nyu2_train = nyu2_train[:40]
 
-#     print('Loaded ({0}).'.format(len(nyu2_train)))
-#     return data, nyu2_train
+def colorize_depth(image_file, colormap='viridis'):
+    # Normalize depth values to [0, 1]
+    image = Image.open(image_file)
 
-# class depthDatasetMemory(Dataset):
-#     def __init__(self, data, nyu2_train, transform=None):
-#         self.data, self.nyu_dataset = data, nyu2_train
-#         self.transform = transform
+    # Convert image to numpy array
+    depth_map = np.array(image)
 
-#     def __getitem__(self, idx):
-#         sample = self.nyu_dataset[idx]
-#         image = Image.open( BytesIO(self.data[sample[0]]) )
-#         depth = Image.open( BytesIO(self.data[sample[1]]) )
-#         sample = {'image': image, 'depth': depth}
-#         if self.transform: sample = self.transform(sample)
-#         return sample
+    normalized_depth = (depth_map - np.min(depth_map)) / (np.max(depth_map) - np.min(depth_map))
 
-#     def __len__(self):
-#         return len(self.nyu_dataset)
+    # Choose colormap
+    cmap = plt.get_cmap(colormap) # matplotlib.pyplot
 
-# class ToTensor(object):
-#     def __init__(self,is_test=False):
-#         self.is_test = is_test
+    # Map normalized depth values to colors
+    colored_depth_map = cmap(normalized_depth)
 
-#     def __call__(self, sample):
-#         image, depth = sample['image'], sample['depth']
-        
-#         image = self.to_tensor(image)
+    # Convert to uint8 RGB image
+    colored_depth_map_rgb = (colored_depth_map[:, :, :3] * 255).astype(np.uint8)
 
-#         depth = depth.resize((320, 240))
+    output_img = Image.fromarray(colored_depth_map_rgb)
+    # Save the image to a file
+    output_img.save('depth_map.png')
 
-#         if self.is_test:
-#             depth = self.to_tensor(depth).float() / 1000
-#         else:            
-#             depth = self.to_tensor(depth).float() * 1000
-        
-#         # put in expected range
-#         depth = torch.clamp(depth, 10, 1000)
+    return colored_depth_map_rgb
 
-#         return {'image': image, 'depth': depth}
-
-    # def to_tensor(self, pic):
-    #     if not(_is_pil_image(pic) or _is_numpy_image(pic)):
-    #         raise TypeError(
-    #             'pic should be PIL Image or ndarray. Got {}'.format(type(pic)))
-
-    #     if isinstance(pic, np.ndarray):
-    #         img = torch.from_numpy(pic.transpose((2, 0, 1)))
-
-    #         return img.float().div(255)
-
-    #     # handle PIL Image
-    #     if pic.mode == 'I':
-    #         img = torch.from_numpy(np.array(pic, np.int32, copy=False))
-    #     elif pic.mode == 'I;16':
-    #         img = torch.from_numpy(np.array(pic, np.int16, copy=False))
-    #     else:
-    #         img = torch.ByteTensor(
-    #             torch.ByteStorage.from_buffer(pic.tobytes()))
-    #     # PIL image mode: 1, L, P, I, F, RGB, YCbCr, RGBA, CMYK
-    #     if pic.mode == 'YCbCr':
-    #         nchannel = 3
-    #     elif pic.mode == 'I;16':
-    #         nchannel = 1
-    #     else:
-    #         nchannel = len(pic.mode)
-    #     img = img.view(pic.size[1], pic.size[0], nchannel)
-
-    #     img = img.transpose(0, 1).transpose(0, 2).contiguous()
-    #     if isinstance(img, torch.ByteTensor):
-    #         return img.float().div(255)
-    #     else:
-    #         return img

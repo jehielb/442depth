@@ -19,3 +19,7 @@ venv3/
 
 nyu_depth_v2_labeled.mat
 val.tar.gz
+4
+runs/*
+
+*.png
