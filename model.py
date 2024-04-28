@@ -21,15 +21,15 @@ class EnhancedDecoder(nn.Sequential):
 
         self.conv2 = nn.Conv2d(num_features, features, kernel_size=1, stride=1, padding=0)
 
-        self.up1 = EnhancedUpSample(in_channels=features//1 + 256, out_channels=features//2)
-        self.up2 = EnhancedUpSample(in_channels=features//2 + 128, out_channels=features//4)
-        self.up3 = EnhancedUpSample(in_channels=features//4 + 64,  out_channels=features//8)
-        self.up4 = EnhancedUpSample(in_channels=features//8 + 64,  out_channels=features//16)
+        self.up1 = EnhancedUpSample(in_channels=features//1, out_channels=features//2)
+        self.up2 = EnhancedUpSample(in_channels=features//2, out_channels=features//4)
+        self.up3 = EnhancedUpSample(in_channels=features//4, out_channels=features//8)
+        self.up4 = EnhancedUpSample(in_channels=features//8, out_channels=features//16)
 
         self.conv3 = nn.Conv2d(features//16, 1, kernel_size=3, stride=1, padding=1)
 
-    def forward(self, x):
-        x_d0 = self.conv2(F.relu(x))
+    def forward(self, features):
+        x_d0 = self.conv2(F.relu(features[12]))
 
         x_d1 = self.up1(x_d0)
         x_d2 = self.up2(x_d1)
