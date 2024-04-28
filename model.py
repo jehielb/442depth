@@ -13,7 +13,7 @@ class EnhancedUpSample(nn.Sequential):
     def forward(self, x):
         return self.up_proj(x, BN=True)
 
-class EnhancedDecoder(nn.Sequential):
+class EnhancedDecoder(nn.Module):
     def __init__(self, num_features=1664, decoder_width = 1.0):
         """Enhanced decoder utilizing up-projection layers"""
         super(EnhancedDecoder, self).__init__()
