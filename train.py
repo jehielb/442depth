@@ -98,12 +98,12 @@ def main():
                 writer.add_scalar('Train/Loss', losses.val, niter)
 
             if i % 5 == 0:
-                LogProgress(model, writer, test_loader, epoch)
+                LogProgress(model, writer, test_loader, niter)
             
 
         # Record epoch's intermediate results
-        LogProgress(model, writer, test_loader, epoch)
-        writer.add_scalar('Train/Loss.avg', losses.avg, epoch, 290)
+        LogProgress(model, writer, test_loader, niter)
+        writer.add_scalar('Train/Loss.avg', losses.avg, epoch)
 
 def LogProgress(model, writer, test_loader, epoch):
     model.eval()
