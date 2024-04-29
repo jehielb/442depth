@@ -24,9 +24,9 @@ class AverageMeter(object):
         self.avg = self.sum / self.count
 
 
-def colorize_depth(depth_map, colormap='viridis'):
+def colorize_depth(depth_map, i, colormap='viridis'):
     #  normalized_depth = (depth_map - np.min(depth_map)) / (np.max(depth_map) - np.min(depth_map))
-    depth_map = np.abs(depth_map.cpu().numpy()[0,:,:])
+    depth_map = np.abs(depth_map.cpu().numpy()[i,:,:])
     # Convert depth map to NumPy array if not already
     depth_map = np.array(depth_map)
 

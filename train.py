@@ -97,9 +97,9 @@ def main():
                 # Log to tensorboard
                 writer.add_scalar('Train/Loss', losses.val, niter)
 
-            if i % 1 == 0:
+            if i % 10 == 0:
                 LogProgress(model, writer, test_loader, niter)
-            i += 100
+            
 
         # Record epoch's intermediate results
         LogProgress(model, writer, test_loader, niter)
@@ -114,12 +114,14 @@ def LogProgress(model, writer, test_loader, epoch):
     image = torchvision.transforms.Resize((320, 240))(image2)
     depth = torchvision.transforms.Resize((320, 240))(depth)
     # breakpoint()
-    if epoch == 0: writer.add_image('Train.1.Image', vutils.make_grid(image.data, nrow=6, normalize=True), epoch)
-    if epoch == 0: writer.add_image('Train.2.Depth', colorize_depth(depth.data, 'viridis'), epoch) #colorize(vutils.make_grid(depth.data, nrow=6, normalize=False))
     # breakpoint()
     output = DepthNorm(model(image2)).squeeze()                 # TODO: might need to get rid of DepthNorm call
-    writer.add_image('Train.3.Ours', colorize_depth(output.data, colormap='viridis'), epoch)
-    writer.add_image('Train.3.Diff', colorize_depth(depth.data-output.data, colormap='viridis'), epoch)
+    # breakpoint()
+    for i in range(output.shape[0]):
+        if epoch == 0: writer.add_image(f'Train.1.Image{i}', vutils.make_grid(image.data[i], nrow=6, normalize=True), epoch)
+        if epoch == 0: writer.add_image(f'Train.2.Depth{i}', colorize_depth(depth.data, i, 'viridis'), epoch) 
+        writer.add_image(f'Train.3.Ours{epoch}{i}', colorize_depth(output.data, i, colormap='viridis'), epoch)
+        writer.add_image(f'Train.3.Diff{epoch}{i}', colorize_depth(depth.data-output.data, i, colormap='viridis'), epoch)
     del image
     del depth
     del output
