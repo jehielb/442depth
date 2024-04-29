@@ -65,7 +65,7 @@ def main():
             # 320, 240
             output = model(image)
 
-            l_depth = l1_criterion(output, depth_n)
+            l_depth = l1_criterion(output.squeeze(), depth_n)
             # l_ssim = torch.clamp((1 - ssim(output, depth_n, val_range = 1000.0 / 10.0)) * 0.5, 0, 1)
             l_ssim = 0
             loss = (1.0 * l_ssim) + (0.1 * l_depth)

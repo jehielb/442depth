@@ -37,10 +37,8 @@ class RandomHorizontalFlip(object):
         
         for i in range(image.shape[0]):
             if random.random() < 0.5:
-                breakpoint()
                 image[i] = np.fliplr(image[i])
-                
-        breakpoint()
+
         return {'image': image, 'depth': depth}
 
 # class RandomChannelSwap(object):
@@ -63,7 +61,7 @@ class RandomHorizontalFlip(object):
 class depthDataset(Dataset):
     def __init__(self, data, transform=None):
         self.data = data
-        self.transform = transform(self)
+        self.transform = transform
     
     def __getitem__(self, idx):
         # breakpoint()
@@ -81,33 +79,31 @@ class ToTensor(object):
         self.is_test = is_test
 
     def __call__(self, sample):
+        # breakpoint()
         image, depth = sample['image'], sample['depth']
-        
         image = self.to_tensor(image, False)
-
-        # depth = depth.resize((320, 240))
 
         if self.is_test:
             depth = self.to_tensor(depth, True).float() / 1000
         else:            
-            depth = self.to_tensor(depth, True).float() * 1000
+            depth= self.to_tensor(depth, True).float() * 1000
+            
+        depth = torch.clamp(depth, 10, 1000)
         
         # put in expected range
-        depth = torch.clamp(depth, 10, 1000)
 
         return {'image': image, 'depth': depth}
 
     def to_tensor(self, pic, isdepth):
-        # if not(_is_pil_image(pic) or _is_numpy_image(pic)):
-        #     raise TypeError(
-        #         'pic should be PIL Image or ndarray. Got {}'.format(type(pic)))
-        # breakpoint()
         if isdepth:
             depth = torch.from_numpy(pic)
             return depth.float().div(255)
         else:
-            img = torch.from_numpy(pic.transpose((0, 1, 2)))
+            img = torch.from_numpy(pic)
             return img.float().div(255)
+            # new_pic = np.empty((pic.shape[0], pic.shape[3], pic.shape[1], pic.shape[2]), dtype=np.uint8)
+            # new_pic = torch.from_numpy(pic.transpose((0, 3, 1, 2)))
+            # return new_pic.float().div(255)
 
 def getNoTransform(is_test=False):
     return transforms.Compose([
@@ -149,13 +145,6 @@ def getTrainingTestingData(batch_size):
 
     data = loadMatToMem('nyu_depth_v2_labeled.mat')
 
-    transformed_training = depthDataset(data, transform=getDefaultTrainTransform())
-    transformed_testing = depthDataset(data, transform=getNoTransform())
-    # breakpoint()
-    # test1 = DataLoader(transformed_training, batch_size, shuffle=True)
-    # test2 = DataLoader(transformed_testing, batch_size, shuffle=False)
-    return DataLoader(transformed_training, batch_size, shuffle=True), DataLoader(transformed_testing, batch_size, shuffle=False)
-
     # Assuming you have your data stored in a dictionary named 'data'
     # with keys 'images' and 'depths'
     images = data['images']
@@ -169,11 +158,16 @@ def getTrainingTestingData(batch_size):
 
     # Iterate over the splits
     for fold, (train_idx, test_idx) in enumerate(kf.split(images)):
-        print(f'Fold {fold+1}:')
+        # print(f'Fold {fold+1}:')
         # Split the data into train and test sets
-        train_images, train_depths = images[train_idx], depths[train_idx]
-        test_images, test_depths = images[test_idx], depths[test_idx]
+        train_data = {'images': images[train_idx], 'depths': depths[train_idx]}
+        test_data = {'images': images[test_idx], 'depths': depths[test_idx]}  
 
+    transformed_training = depthDataset(train_data, transform=getNoTransform())
+    transformed_testing = depthDataset(test_data, transform=getNoTransform())
+    # breakpoint()
+    return DataLoader(transformed_training, batch_size, shuffle=True), DataLoader(transformed_testing, batch_size, shuffle=False)
 
+    
 
 
