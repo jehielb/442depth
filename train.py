@@ -13,6 +13,8 @@ from model import PTModel as Model
 from loss import ssim
 from data import getTrainingTestingData
 from utils import AverageMeter, DepthNorm, colorize_depth
+import gc
+
 def main():
     # Arguments
     parser = argparse.ArgumentParser(description='High Quality Monocular Depth Estimation via Transfer Learning')
@@ -51,6 +53,7 @@ def main():
         end = time.time()
 
         for i, sample_batched in enumerate(train_loader):
+            breakpoint()
             optimizer.zero_grad()
 
             # Prepare sample and target
@@ -95,6 +98,7 @@ def main():
 
             if i % 1 == 0:
                 LogProgress(model, writer, test_loader, niter)
+            i += 100
 
         # Record epoch's intermediate results
         LogProgress(model, writer, test_loader, niter)
@@ -118,6 +122,7 @@ def LogProgress(model, writer, test_loader, epoch):
     del image
     del depth
     del output
+    gc.collect()
 
 if __name__ == '__main__':
     main()

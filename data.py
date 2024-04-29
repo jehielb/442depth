@@ -14,13 +14,6 @@ from sklearn.model_selection import KFold
 import matplotlib.pyplot as plt
 from itertools import permutations
 
-def _is_pil_image(img):
-    return isinstance(img, Image.Image)
-
-def _is_numpy_image(img):
-    return isinstance(img, np.ndarray) and (img.ndim in {2, 3})
-
-
 import numpy as np
 from PIL import Image
 import random
@@ -28,32 +21,39 @@ import random
 class RandomHorizontalFlip(object):
     def __call__(self, sample):
         # breakpoint()
-        image= sample.data['images']
-        depth = sample.data['depths']
+        image= sample['image']
+        depth = sample['depth']
 
         if not isinstance(image, np.ndarray):
             raise TypeError(
                 'img should be numpy array. Got {}'.format(type(image)))
-        
-        for i in range(image.shape[0]):
-            if random.random() < 0.5:
-                image[i] = np.fliplr(image[i])
+        # if (image.shape != (3, 640,480)):
+            # breakpoint()
+        if random.random() < 0.5:
+            image = np.flip(image, axis=2)
+        print(image.shape)
 
         return {'image': image, 'depth': depth}
 
-# class RandomChannelSwap(object):
-#     def __init__(self, probability):
-#         self.probability = probability
-#         self.indices = list(permutations(range(3), 3))
+class RandomChannelSwap(object):
+    def __init__(self, probability):
+        self.probability = probability
+        self.indices = list(permutations(range(3), 3))
 
-#     def __call__(self, sample):
-#         image, depth = sample['image'], sample['depth']
-#         if not isinstance(image, np.ndarray): 
-#             raise TypeError('img should be numpy array. Got {}'.format(type(image)))
-#         if random.random() < self.probability:
-#             permuted_indices = self.indices[random.randint(0, len(self.indices) - 1)]
-#             image = image[..., permuted_indices]
-#         return {'image': image, 'depth': depth}
+    def __call__(self, sample):
+        image, depth = sample['image'], sample['depth']
+        if not isinstance(image, np.ndarray): 
+            raise TypeError('img should be numpy array. Got {}'.format(type(image)))
+        if random.random() < self.probability:
+            permuted_indices = self.indices[random.randint(0, len(self.indices) - 1)]
+            image_copy = np.copy(image)
+            # Swap the channels based on the randomly selected permutation
+            image_copy[0, ...] = image[permuted_indices[0], ...]
+            image_copy[1, ...] = image[permuted_indices[1], ...]
+            image_copy[2, ...] = image[permuted_indices[2], ...]
+            image = image_copy
+        print(image.shape)
+        return {'image': image, 'depth': depth}
 
 
 
@@ -96,10 +96,12 @@ class ToTensor(object):
 
     def to_tensor(self, pic, isdepth):
         if isdepth:
-            depth = torch.from_numpy(pic)
+            pic_copy = pic.copy()
+            depth = torch.from_numpy(pic_copy)
             return depth.float().div(255)
         else:
-            img = torch.from_numpy(pic)
+            pic_copy = pic.copy()
+            img = torch.from_numpy(pic_copy)
             return img.float().div(255)
             # new_pic = np.empty((pic.shape[0], pic.shape[3], pic.shape[1], pic.shape[2]), dtype=np.uint8)
             # new_pic = torch.from_numpy(pic.transpose((0, 3, 1, 2)))
@@ -113,6 +115,7 @@ def getNoTransform(is_test=False):
 def getDefaultTrainTransform():
     return transforms.Compose([
         RandomHorizontalFlip(),
+        RandomChannelSwap(0.5),
         ToTensor()
     ])
 
@@ -121,8 +124,6 @@ def loadMatToMem(zip_file):
     # Load mat file into memory
     print('Loading nyu dataset...', end='')
     # unpack the h5py dataset
-    # keys inside: 
-    # ['#refs#', '#subsystem#', 'accelData', 'depths', 'images', 'instances', 'labels', 'names', 'namesToIds', 'rawDepthFilenames', 'rawDepths', 'rawRgbFilenames', 'sceneTypes', 'scenes']
     with h5py.File(zip_file, 'r') as file:
         # breakpoint()
         data = {}
@@ -136,9 +137,6 @@ def loadMatToMem(zip_file):
     # TODO: shuffle the data set 
     # from sklearn.utils import shuffle
     # nyu2_train = shuffle(nyu2_train, random_state=0)
-
-
-
 
 
 def getTrainingTestingData(batch_size):
@@ -163,7 +161,7 @@ def getTrainingTestingData(batch_size):
         train_data = {'images': images[train_idx], 'depths': depths[train_idx]}
         test_data = {'images': images[test_idx], 'depths': depths[test_idx]}  
 
-    transformed_training = depthDataset(train_data, transform=getNoTransform())
+    transformed_training = depthDataset(train_data, transform=getDefaultTrainTransform())
     transformed_testing = depthDataset(test_data, transform=getNoTransform())
     # breakpoint()
     return DataLoader(transformed_training, batch_size, shuffle=True), DataLoader(transformed_testing, batch_size, shuffle=False)
