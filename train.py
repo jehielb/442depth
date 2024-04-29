@@ -12,8 +12,7 @@ from PIL import Image
 from model import PTModel as Model
 from loss import ssim
 from data import getTrainingTestingData
-from utils import AverageMeter, DepthNorm, colorize
-
+from utils import AverageMeter, DepthNorm, colorize_depth
 def main():
     # Arguments
     parser = argparse.ArgumentParser(description='High Quality Monocular Depth Estimation via Transfer Learning')
@@ -66,19 +65,6 @@ def main():
             # 320, 240
             output = model(image)
 
-            # Compute the loss
-            # breakpoint()
-            output = torch.squeeze(output, dim=1)
-            output_np = output.detach().cpu().numpy()
-            # Transpose dimensions if necessary (e.g., from CHW to HWC)
-            output_np = np.transpose(output_np, (1, 2, 0))
-            # Rescale pixel values to the range [0, 255]
-            output_np = (output_np * 255).astype(np.uint8)
-            # Convert NumPy array to PIL image
-            output_img = Image.fromarray(output_np)
-            # Save the image to a file
-            output_img.save('output_image.png')
-
             l_depth = l1_criterion(output, depth_n)
             # l_ssim = torch.clamp((1 - ssim(output, depth_n, val_range = 1000.0 / 10.0)) * 0.5, 0, 1)
             l_ssim = 0
@@ -107,7 +93,7 @@ def main():
                 # Log to tensorboard
                 writer.add_scalar('Train/Loss', losses.val, niter)
 
-            if i % 300 == 0:
+            if i % 1 == 0:
                 LogProgress(model, writer, test_loader, niter)
 
         # Record epoch's intermediate results
@@ -122,15 +108,31 @@ def LogProgress(model, writer, test_loader, epoch):
     depth = torch.autograd.Variable(sample_batched['depth'].cuda(non_blocking=True))
     image = torchvision.transforms.Resize((320, 240))(image2)
     depth = torchvision.transforms.Resize((320, 240))(depth)
-    breakpoint()
+    # breakpoint()
     if epoch == 0: writer.add_image('Train.1.Image', vutils.make_grid(image.data, nrow=6, normalize=True), epoch)
-    if epoch == 0: writer.add_image('Train.2.Depth', colorize(vutils.make_grid(depth.data, nrow=6, normalize=False)), epoch)
-    output = DepthNorm( model(image2) )
-    writer.add_image('Train.3.Ours', colorize(vutils.make_grid(output.data, nrow=6, normalize=False)), epoch)
-    writer.add_image('Train.3.Diff', colorize(vutils.make_grid(torch.abs(output-depth).data, nrow=6, normalize=False)), epoch)
+    if epoch == 0: writer.add_image('Train.2.Depth', colorize_depth(depth.data, 'viridis'), epoch) #colorize(vutils.make_grid(depth.data, nrow=6, normalize=False))
+    # breakpoint()
+    output = DepthNorm(model(image2)).squeeze()                 # TODO: might need to get rid of DepthNorm call
+    writer.add_image('Train.3.Ours', colorize_depth(output.data, colormap='viridis'), epoch)
+    writer.add_image('Train.3.Diff', colorize_depth(depth.data-output.data, colormap='viridis'), epoch)
     del image
     del depth
     del output
 
 if __name__ == '__main__':
     main()
+
+
+
+            # Compute the loss
+            # # breakpoint()
+            # output = torch.squeeze(output, dim=1)
+            # output_np = output.detach().cpu().numpy()
+            # # Transpose dimensions if necessary (e.g., from CHW to HWC)
+            # output_np = np.transpose(output_np, (1, 2, 0))
+            # # Rescale pixel values to the range [0, 255]
+            # output_np = (output_np * 255).astype(np.uint8)
+            # # Convert NumPy array to PIL image
+            # output_img = Image.fromarray(output_np)
+            # # Save the image to a file
+            # output_img.save('output_image.png')

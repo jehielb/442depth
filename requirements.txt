@@ -16,3 +16,22 @@
 # zipfile36
 # h5py
 # sklearn-utils
+
+# !pip install matplotlib
+# !pip install numpy
+# !pip install pandas
+# !pip install torch
+# !pip install torchvision
+# !pip install tensorboardX
+# !pip install tensorflow
+# !pip install pillow
+# !pip install keras
+# !pip install layers
+# !pip install scikit-learn
+# !pip install opencv-python
+# !pip install pydot
+# !pip install GraphViz
+# !pip install scipy
+# !pip install zipfile36
+# !pip install h5py
+# !pip install sklearn-utils

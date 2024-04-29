@@ -12,7 +12,7 @@ from io import BytesIO
 import random
 from sklearn.model_selection import KFold
 import matplotlib.pyplot as plt
-
+from itertools import permutations
 
 def _is_pil_image(img):
     return isinstance(img, Image.Image)
@@ -21,44 +21,49 @@ def _is_numpy_image(img):
     return isinstance(img, np.ndarray) and (img.ndim in {2, 3})
 
 
+import numpy as np
+from PIL import Image
+import random
+
 class RandomHorizontalFlip(object):
     def __call__(self, sample):
-        image, depth = sample['image'], sample['depth']
+        # breakpoint()
+        image= sample.data['images']
+        depth = sample.data['depths']
 
-        if not _is_pil_image(image):
+        if not isinstance(image, np.ndarray):
             raise TypeError(
-                'img should be PIL Image. Got {}'.format(type(image)))
-        if not _is_pil_image(depth):
-            raise TypeError(
-                'img should be PIL Image. Got {}'.format(type(depth)))
-
-        if random.random() < 0.5:
-            image = image.transpose(Image.FLIP_LEFT_RIGHT)
-            depth = depth.transpose(Image.FLIP_LEFT_RIGHT)
-
+                'img should be numpy array. Got {}'.format(type(image)))
+        
+        for i in range(image.shape[0]):
+            if random.random() < 0.5:
+                breakpoint()
+                image[i] = np.fliplr(image[i])
+                
+        breakpoint()
         return {'image': image, 'depth': depth}
 
-class RandomChannelSwap(object):
-    def __init__(self, probability):
-        from itertools import permutations
-        self.probability = probability
-        self.indices = list(permutations(range(3), 3))
+# class RandomChannelSwap(object):
+#     def __init__(self, probability):
+#         self.probability = probability
+#         self.indices = list(permutations(range(3), 3))
 
-    def __call__(self, sample):
-        image, depth = sample['image'], sample['depth']
-        if not _is_pil_image(image): raise TypeError('img should be PIL Image. Got {}'.format(type(image)))
-        if not _is_pil_image(depth): raise TypeError('img should be PIL Image. Got {}'.format(type(depth)))
-        if random.random() < self.probability:
-            image = np.asarray(image)
-            image = Image.fromarray(image[...,list(self.indices[random.randint(0, len(self.indices) - 1)])])
-        return {'image': image, 'depth': depth}
+#     def __call__(self, sample):
+#         image, depth = sample['image'], sample['depth']
+#         if not isinstance(image, np.ndarray): 
+#             raise TypeError('img should be numpy array. Got {}'.format(type(image)))
+#         if random.random() < self.probability:
+#             permuted_indices = self.indices[random.randint(0, len(self.indices) - 1)]
+#             image = image[..., permuted_indices]
+#         return {'image': image, 'depth': depth}
+
 
 
 
 class depthDataset(Dataset):
     def __init__(self, data, transform=None):
         self.data = data
-        self.transform = transform
+        self.transform = transform(self)
     
     def __getitem__(self, idx):
         # breakpoint()
@@ -112,7 +117,6 @@ def getNoTransform(is_test=False):
 def getDefaultTrainTransform():
     return transforms.Compose([
         RandomHorizontalFlip(),
-        RandomChannelSwap(0.5),
         ToTensor()
     ])
 
@@ -123,7 +127,7 @@ def loadMatToMem(zip_file):
     # unpack the h5py dataset
     # keys inside: 
     # ['#refs#', '#subsystem#', 'accelData', 'depths', 'images', 'instances', 'labels', 'names', 'namesToIds', 'rawDepthFilenames', 'rawDepths', 'rawRgbFilenames', 'sceneTypes', 'scenes']
-    with h5py.File('nyu_depth_v2_labeled.mat', 'r') as file:
+    with h5py.File(zip_file, 'r') as file:
         # breakpoint()
         data = {}
         # for key in file.keys():
@@ -143,15 +147,8 @@ def loadMatToMem(zip_file):
 
 def getTrainingTestingData(batch_size):
 
-    data = loadMatToMem('nyu_data.zip')
-    breakpoint()
+    data = loadMatToMem('nyu_depth_v2_labeled.mat')
 
-    output_np = (output_np * 255).astype(np.uint8)
-    # Convert NumPy array to PIL image
-    output_img = Image.fromarray(output_np)
-    # Save the image to a file
-    output_img.save('output_image.png')
-    
     transformed_training = depthDataset(data, transform=getDefaultTrainTransform())
     transformed_testing = depthDataset(data, transform=getNoTransform())
     # breakpoint()
@@ -178,27 +175,5 @@ def getTrainingTestingData(batch_size):
         test_images, test_depths = images[test_idx], depths[test_idx]
 
 
-def colorize_depth(image_file, colormap='viridis'):
-    # Normalize depth values to [0, 1]
-    image = Image.open(image_file)
 
-    # Convert image to numpy array
-    depth_map = np.array(image)
-
-    normalized_depth = (depth_map - np.min(depth_map)) / (np.max(depth_map) - np.min(depth_map))
-
-    # Choose colormap
-    cmap = plt.get_cmap(colormap) # matplotlib.pyplot
-
-    # Map normalized depth values to colors
-    colored_depth_map = cmap(normalized_depth)
-
-    # Convert to uint8 RGB image
-    colored_depth_map_rgb = (colored_depth_map[:, :, :3] * 255).astype(np.uint8)
-
-    output_img = Image.fromarray(colored_depth_map_rgb)
-    # Save the image to a file
-    output_img.save('depth_map.png')
-
-    return colored_depth_map_rgb
 
