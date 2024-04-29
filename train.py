@@ -22,7 +22,7 @@ def main():
     parser.add_argument('--lr', '--learning-rate', default=0.0001, type=float, help='initial learning rate')
     parser.add_argument('--bs', default=4, type=int, help='batch size')
     args = parser.parse_args()
-    
+
     # Create model
     model = Model().cuda()
     print('Model created.')
@@ -53,7 +53,7 @@ def main():
         end = time.time()
 
         for i, sample_batched in enumerate(train_loader):
-            breakpoint()
+            # breakpoint()
             optimizer.zero_grad()
 
             # Prepare sample and target
@@ -69,8 +69,9 @@ def main():
             output = model(image)
 
             l_depth = l1_criterion(output.squeeze(), depth_n)
-            # l_ssim = torch.clamp((1 - ssim(output, depth_n, val_range = 1000.0 / 10.0)) * 0.5, 0, 1)
-            l_ssim = 0
+            # breakpoint()
+            l_ssim = torch.clamp((1 - ssim(output.squeeze().unsqueeze(0), depth_n, val_range = 1000.0 / 10.0)) * 0.5, 0, 1)
+            # l_ssim = 0
             loss = (1.0 * l_ssim) + (0.1 * l_depth)
 
             # Update step

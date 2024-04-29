@@ -31,8 +31,7 @@ class RandomHorizontalFlip(object):
             # breakpoint()
         if random.random() < 0.5:
             image = np.flip(image, axis=2)
-        print(image.shape)
-
+        # print(image.shape)
         return {'image': image, 'depth': depth}
 
 class RandomChannelSwap(object):
@@ -52,7 +51,7 @@ class RandomChannelSwap(object):
             image_copy[1, ...] = image[permuted_indices[1], ...]
             image_copy[2, ...] = image[permuted_indices[2], ...]
             image = image_copy
-        print(image.shape)
+        # print(image.shape)
         return {'image': image, 'depth': depth}
 
 
