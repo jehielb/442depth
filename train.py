@@ -98,14 +98,14 @@ def main():
                 writer.add_scalar('Train/Loss', losses.val, niter)
 
             if i % 10 == 0:
-                LogProgress(model, writer, test_loader, niter)
+                LogProgress(model, writer, test_loader, niter, epoch, i)
             
 
         # Record epoch's intermediate results
         LogProgress(model, writer, test_loader, niter)
-        writer.add_scalar('Train/Loss.avg', losses.avg, epoch)
+        writer.add_scalar('Train/Loss.avg', losses.avg, epoch, 290)
 
-def LogProgress(model, writer, test_loader, epoch):
+def LogProgress(model, writer, test_loader, epoch, batch_num):
     model.eval()
     sequential = test_loader
     sample_batched = next(iter(sequential))
@@ -118,10 +118,10 @@ def LogProgress(model, writer, test_loader, epoch):
     output = DepthNorm(model(image2)).squeeze()                 # TODO: might need to get rid of DepthNorm call
     # breakpoint()
     for i in range(output.shape[0]):
-        if epoch == 0: writer.add_image(f'Train.1.Image{i}', vutils.make_grid(image.data[i], nrow=6, normalize=True), epoch)
-        if epoch == 0: writer.add_image(f'Train.2.Depth{i}', colorize_depth(depth.data, i, 'viridis'), epoch) 
-        writer.add_image(f'Train.3.Ours{epoch}{i}', colorize_depth(output.data, i, colormap='viridis'), epoch)
-        writer.add_image(f'Train.3.Diff{epoch}{i}', colorize_depth(depth.data-output.data, i, colormap='viridis'), epoch)
+        if epoch == 0: writer.add_image(f'Train.1.Image{batch_num}-{i}', vutils.make_grid(image.data[i], nrow=6, normalize=True), epoch)
+        if epoch == 0: writer.add_image(f'Train.2.Depth{batch_num}-{i}', colorize_depth(depth.data, i, 'viridis'), epoch) 
+        writer.add_image(f'Train.3.Ours{batch_num}-{i}', colorize_depth(output.data, i, colormap='viridis'), epoch)
+        writer.add_image(f'Train.3.Diff{batch_num}-{i}', colorize_depth(depth.data-output.data, i, colormap='viridis'), epoch)
     del image
     del depth
     del output
